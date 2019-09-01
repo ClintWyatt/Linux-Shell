@@ -22,7 +22,7 @@ void directoryChange(); //method changes the directory
 void myhistory(); //Function to display a list of all commands the user has enterred.
 void parentSignal(); //used to set the parent process to where any signal cant kill the shell, which means ignoring signals. 
 void childSignal(); //used to set the signals to their default behavior. 
-void pipeMethod(int numPipes);//method used for the piping
+void pipeMethod(int numPipes, int write, int read);//method used for the piping
 void pathname();
 void readRedirection();
 void writeRedirection();
@@ -116,6 +116,10 @@ int main(int argc, char *argv[])
 		{
 			myhistory();
 		} 
+		else if(memcmp(cmd, "$PATH",5) ==0)
+		{
+			pathname();
+		}	
     		else
 		{	
 			//Error checking the fork system call
@@ -132,9 +136,8 @@ int main(int argc, char *argv[])
 					childSignal(); //setting the child process to the foreground
 					if(pipeNum != 0)
 					{
-						pipeMethod(pipeNum);
+						pipeMethod(pipeNum, writeRedirect, readRedirect);
 					}
-				
 					else if(writeRedirect !=0) //a > or >> character appear
 					{
 						writeRedirection();
@@ -193,7 +196,7 @@ void testArgs()
 
 }
 
-void pipeMethod(int numPipes)
+void pipeMethod(int numPipes, int write, int read)
 {	
 	if(numPipes ==1)
 	{
@@ -204,13 +207,15 @@ void pipeMethod(int numPipes)
 		short a =0;
 		short b =0;
 		short pipeIndex =0;
-		short index =0;
+		short index =0;//used for the leftSide and rightSide buffers
+		short writeDirect =0; //used to determine if > or >> was in stdin
+		FILE *fp;
 		int fd[2]; //used for dup2 system call
 		command = strtok(cmd, " \n");
 		
 		while(command != NULL)
 		{
-			if(strcmp(command, "|") == 0) //if command is a pipe
+			if((memcmp(command, "|", 1)) == 0) //if command is a pipe
 			{
 				pipeIndex++;
 				leftSide[index] = NULL;//setting the last argument to null
@@ -223,8 +228,32 @@ void pipeMethod(int numPipes)
 			}
 			else //if the pipe symbol has appeared
 			{
-				rightSide[index] = command;
-				index++;
+				if(write > 0) //seeing if a > or >> is in the input stream
+				{
+					if((memcmp(command, ">>", 2) ==0)) //if command is >
+				       	{ 
+						writeDirect =2; //setting writeDirect to 2
+						command = strtok(NULL, " \n");//going to the next argument from stdin
+						break; //exit the loop to prevent adding the file name to the end of the rightSide of the pipe
+					}
+					else if((memcmp(command, ">", 1) ==0))//if command is >>
+					{
+						writeDirect =1; //writeDirect is 1
+						command = strtok(NULL, " \n"); //going to the next argument from stdin
+						break;
+					}
+					else
+					{
+						rightSide[index] = command;
+						index++;
+					}
+
+				}	
+				else
+				{	
+					rightSide[index] = command;//adding hte string to the rightSide
+					index++;//going to the next index
+				}
 			}
 			command = strtok(NULL, " \n");
 		}
@@ -253,11 +282,40 @@ void pipeMethod(int numPipes)
 		else
 		{
 			wait( (int *)0 ); //wait for the child process to finish
-			dup2(fd[0], fileno(stdin));
-			close(fd[0]);
-			close(fd[1]);
-			execvp(rightSide[0], rightSide);
-			perror("execvp error right of the pipe \n");
+			
+			if(writeDirect >0)//if there was a > or >>
+			{
+					//printf("%d \n", writeDirect);	
+					if(writeDirect ==1)
+					{
+						if((fp = fopen(command, "w")) ==NULL)
+						{
+							perror("file not found \n");
+						}
+					}
+					else
+					{
+						if((fp = fopen(command, "a")) ==NULL)
+						{
+							perror("file not found \n");
+						}	
+					}
+					dup2(fileno(fp), fileno(stdout));//redirecting the output to the file
+					fclose(fp);//closing the file
+					dup2(fd[0], fileno(stdin));
+					close(fd[0]); 
+					close(fd[1]);
+					execvp(rightSide[0], rightSide);
+					
+			}
+			else
+			{	
+				dup2(fd[0], fileno(stdin));
+				close(fd[0]);
+				close(fd[1]);
+				execvp(rightSide[0], rightSide);
+				perror("execvp error right of the pipe \n");
+			}	
 		}
 	}
 	else
@@ -491,25 +549,25 @@ void directoryChange(int x)
 	//case that more than "cd" was typed 
 	else
 	{
-
 	
 		if((chdir(address))!=0)//if the directory does not exist 
 		{
-			perror("cant change directory\n");
+			perror("cant change directory\n");		
 		}
 	
 	}
 }
 
 
-void myhistory(){
+void myhistory()
+{
 	//print history of enterred commands
 	int i = 0;
 	if (allRecs > 19)
 	{
 		while (i < 19)
 		{
-			printf("Record %d: %s\n", i+1 , recArr[i]);
+			printf("%d: %s\n", i+1 , recArr[i]);
 			i++;
 		}
 	}
@@ -517,16 +575,16 @@ void myhistory(){
 	{
 		while (i < records)
 		{
-                        printf("Record %d: %s\n", i+1 , recArr[i]);
+                        printf("%d: %s\n", i+1 , recArr[i]);
                         i++;
                 }
         }
 }
 
 
-void parentSignal(){
-	/* After this method executes, all signals for the parent process that can be overwritten will be ignored */
-	
+void parentSignal()
+{
+	/* After this method executes, all signals for the parent process that can be overwritten will be ignored */	
 	tcsetpgrp(fileno(stdin), getpgrp()); //makes the process with the process group id pgrp the foreground process group on the terminal.
 	act.sa_handler = SIG_IGN; //specifies the action to be associated with signum. sig_ign means to ignore the signal.
 	assert(sigaction(SIGHUP, &act, NULL) ==0);
@@ -558,14 +616,10 @@ void parentSignal(){
 	assert(sigaction(SIGPWR, &act, NULL) ==0);
 	assert(sigaction(SIGWINCH, &act, NULL) ==0);
 	//assert(sigaction(SIGUNUSED, &act, NULL) ==0);
-	
-
-		
 }
 
-void childSignal(){
-
-
+void childSignal()
+{
 	setpgrp(); //sets process group of own process to itself
 	tcsetpgrp(fileno(stdin), getpgid(pid));//having the child process in the foreground
 	act.sa_handler = SIG_DFL; //default signal
@@ -599,13 +653,11 @@ void childSignal(){
 	assert(sigaction(SIGWINCH, &act, NULL) ==0);
 	//assert(sigaction(SIGUNUSED, &act, NULL) ==0);
 	
-
-
-
 }
 // pathname
-void pathname(){
-        printf("path\n");
+void pathname()
+{
+       // printf("path\n");
         char* path = getenv("PATH");
         printf("%s\n", path);
 
@@ -689,23 +741,26 @@ void readRedirection()
 
 	while(command != NULL)
 	{
-		if(strcmp(command, "<")) //if command does not equal "<"
+		if(memcmp(command, "<", 1) != 0) //if command does not equal "<"
 		{
+			
 			allArgs[index] = command;//having the command equal a index in the string array
 			index++; //going to the next index
-			command = strtok(NULL, " "); // going to the next non space string
+			command = strtok(NULL, " \n"); // going to the next non space string
 		}
 		else
 		{
 			allArgs[index] = NULL; //having the last index of the string array be null in order to work with execvp
-			command = strtok(NULL, " ");//going to the next non character string
+			command = strtok(NULL, " \n");//going to the next non character string, which will be the file
 			break;
 		}
 		
 	}
+
 	if((fp = fopen(command, "r")) == NULL)
 	{
-		perror("file name does not exist \n");
+		printf("Error: %s is not a valid file name \n", command);
+		exit(1);
 	}
 	dup2(fileno(fp), fileno(stdin)); //copying file descriptor for standard in
 	fclose(fp); //closing the file
