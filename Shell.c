@@ -33,7 +33,6 @@ struct passwd *usrAccount; //struct passwd holds data about the user currently r
 struct sigaction act;//used for the signaling
 pid_t pid, pid1, pid2, pid3;//used for creating child processes
 uid_t uid;
-int pos;
 int startIndex =0;
 int endIndex =0;
 int pos; //used to test for special characters
