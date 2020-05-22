@@ -16,16 +16,17 @@
 #include <assert.h>
 
 
-#define size 512
-void testArgs();
-void directoryChange(); //method changes the directory
+//#define size 512
+int size = 512;
+void testArgs(char *cmd, int size);
+void directoryChange(char *cmd, int size); //method changes the directory
 void myhistory(); //Function to display a list of all commands the user has enterred.
 void parentSignal(); //used to set the parent process to where any signal cant kill the shell, which means ignoring signals. 
 void childSignal(); //used to set the signals to their default behavior. 
-void pipeMethod(int numPipes, int write, int read);//method used for the piping
-void pathname();
-void readRedirection();
-void writeRedirection();
+void pipeMethod(int numPipes, int write, int read, char *cmd, int size);//method used for the piping
+void pathname(char *cmd, int size);
+void readRedirection(char *cmd, int size);
+void writeRedirection(char *cmd, int size);
 void redirectionPipe();
 void exitShell();
 
@@ -45,21 +46,21 @@ enum { READ, WRITE };
 char recArr[20][512]; //Array to keep a list of all commands the user has enterred.
 char *_pipe = "|";
 char *arg; //used to check if any pipes or redirection symbols have appeared
-char cmd[size];
+//char cmd[size];
 char *cd = "cd";
-char directory[size];//used to print current directory
+//char directory[size];//used to print current directory
 char *wspace(char *word); //Function to clear leading whitespace from batch file commands
 char exitChar[] = "exit";
 
 int main(int argc, char *argv[])
 {
-
-
+	char cmd[size];//used for taking in commands from the user
+	char dir[size];
 	for( ; ; )
 	{
 		parentSignal(); //Having the current process ignore all signals (except kill -9) that can kill the shell
 		//getcwd copies the current directory to "directory"
-		printf("%s ", getcwd(directory, sizeof(directory)));
+		printf("%s ", getcwd(dir, sizeof(dir)));
 		fgets(cmd, sizeof(cmd), stdin); //getting input from the user	
 
 
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
 
 		if((memcmp(cd, cmd, 2) ==0)) //if there is "cd" at teh beginning of the string
 		{
-			directoryChange();
+			directoryChange(cmd, size);
 		}    
 		else if(memcmp(cmd,"history", 7) == 0)//if hsitory was typed
 		{
@@ -116,7 +117,7 @@ int main(int argc, char *argv[])
 		} 
 		else if(memcmp(cmd, "$PATH",5) ==0)//if $path was typed
 		{
-			pathname();
+			pathname(cmd, size);
 		}	
 		else
 		{	
@@ -134,19 +135,19 @@ int main(int argc, char *argv[])
 					childSignal(); //setting the child process to the foreground
 					if(pipeNum != 0)//if the pipeNum variable (a pipe was typed) is greater than zero, test the pipe method
 					{
-						pipeMethod(pipeNum, writeRedirect, readRedirect);
+						pipeMethod(pipeNum, writeRedirect, readRedirect, cmd, size);
 					}
 					else if(writeRedirect !=0) //is > or >> was typed
 					{
-						writeRedirection();
+						writeRedirection(cmd, size);
 					}
 					else if(readRedirect != 0)//if < or << was typed
 					{
-						readRedirection();
+						readRedirection(cmd, size);
 					}
 					else
 					{
-						testArgs();//simple command without pipes or redirection
+						testArgs(cmd, size);//simple command without pipes or redirection
 					}	
 				}
 				else //parent process
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
 	}
 } // end of main
 
-void testArgs()
+void testArgs(char *cmd, int size)
 {
 
 	char *allArgs[size];//is essentailly a array of "strings"
@@ -194,7 +195,7 @@ void testArgs()
 
 }
 
-void pipeMethod(int numPipes, int write, int read)
+void pipeMethod(int numPipes, int write, int read, char *cmd, int size)
 {	
 	if(numPipes ==1)
 	{
@@ -505,7 +506,7 @@ void pipeMethod(int numPipes, int write, int read)
 }
 
 
-void directoryChange(int x)
+void directoryChange(char *cmd, int size)
 {	
 	int numArgs =0;//used to determine if just "cd" was typed
 	char *home = getenv("HOME");
@@ -653,7 +654,7 @@ void childSignal()
 
 }
 // pathname
-void pathname()
+void pathname(char *cmd, int size)
 {
 	// printf("path\n");
 	char* path = getenv("PATH");
@@ -673,7 +674,7 @@ void pathname()
 	}
 }
 
-void writeRedirection()
+void writeRedirection(char *cmd, int size)
 {
 	FILE *fp;  
 	char *allArgs[size]; //string array
@@ -729,7 +730,7 @@ void writeRedirection()
 
 }
 
-void readRedirection()
+void readRedirection(char *cmd, int size)
 {
 	FILE *fp; //file to be opened
 	char *allArgs[size]; //array of strings
