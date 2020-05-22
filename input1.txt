@@ -1,0 +1,4 @@
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+cw0296   29988  0.0  0.4  17532  9220 pts/0    Ss   17:13   0:00 -bash
+cw0296   30369  0.0  0.0   2392   484 pts/0    S    17:33   0:00 ./a.out
+cw0296   30373  0.0  0.3  17524  7340 pts/0    R+   17:33   0:00 ps u
