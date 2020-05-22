@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 {
 	char cmd[size];//used for taking in commands from the user
 	char dir[size];
+	int childProcess;
 	for( ; ; )
 	{
 		parentSignal(); //Having the current process ignore all signals (except kill -9) that can kill the shell
@@ -156,7 +157,7 @@ int main(int argc, char *argv[])
 					setpgid(pid, pid); 
 					signal(SIGTTOU, SIG_IGN); //SIGTTOU is generated when a process in a background job attempts to write to the terminal
 					tcsetpgrp(fileno(stdin), getpgid(pid)); 
-					wait( (int *)0 );//wait for child to finish
+					wait(&childProcess);//wait for child to finish
 				}
 			}
 		}	
@@ -197,6 +198,7 @@ void testArgs(char *cmd)
 
 void pipeMethod(int numPipes, int write, int read, char *cmd)
 {	
+	int childProcess;
 	if(numPipes ==1)
 	{
 		pid_t pid; //used for the fork system call
@@ -280,7 +282,7 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 		}
 		else
 		{
-			wait( (int *)0 ); //wait for the child process to finish
+			wait(&childProcess); //wait for the child process to finish
 
 			if(writeDirect >0)//if there was a > or >>
 			{
