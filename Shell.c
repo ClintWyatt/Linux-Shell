@@ -51,7 +51,7 @@ char exitChar[] = "exit";
 int main(int argc, char *argv[])
 {
 	char cmd[size];//used for taking in commands from the user
-	char dir[size];
+	char dir[size];//current directory
 	pid_t pid;
 	int childProcess;
 	for( ; ; )
