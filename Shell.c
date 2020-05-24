@@ -1,6 +1,8 @@
 /*
-   Group 22
-   */
+Linux Bash Shell
+Author: Clint Wyatt
+Version: 0.7.4
+*/
 
 #include <stdio.h>
 #include <ctype.h>
@@ -16,13 +18,12 @@
 #include <assert.h>
 
 
-//#define size 512
-int size = 512;
+#define size 512
 void testArgs(char *cmd);
 void directoryChange(char *cmd); //method changes the directory
 void myhistory(); //Function to display a list of all commands the user has enterred.
 void parentSignal(); //used to set the parent process to where any signal cant kill the shell, which means ignoring signals. 
-void childSignal(); //used to set the signals to their default behavior. 
+void childSignal(pid_t pid); //used to set the signals to their default behavior. 
 void pipeMethod(int numPipes, int write, int read, char *cmd);//method used for the piping
 void pathname(char *cmd);
 void readRedirection(char *cmd);
@@ -30,12 +31,9 @@ void writeRedirection(char *cmd);
 void redirectionPipe();
 void exitShell();
 
-struct passwd *usrAccount; //struct passwd holds data about the user currently runnint the shell. The usrAccount struct holds information about the user from the operation system.
 struct sigaction act;//used for the signaling
-pid_t pid, pid1, pid2, pid3;//used for creating child processes
-uid_t uid;
-int startIndex =0;
-int endIndex =0;
+pid_t pid1, pid2, pid3;//used for creating child processes
+
 int pos; //used to test for special characters
 int records = 0; //Variable to keep track of the number of commands the user enterred up to 20 commands.
 int allRecs = 0; //Variable to keep track of the total number of user enterred commands.
@@ -45,10 +43,8 @@ int writeRedirect = 0;
 enum { READ, WRITE };
 char recArr[20][512]; //Array to keep a list of all commands the user has enterred.
 char *_pipe = "|";
-char *arg; //used to check if any pipes or redirection symbols have appeared
-//char cmd[size];
+char *arg; //used to check if any pipes or redirection symbols have appeared;
 char *cd = "cd";
-//char directory[size];//used to print current directory
 char *wspace(char *word); //Function to clear leading whitespace from batch file commands
 char exitChar[] = "exit";
 
@@ -56,6 +52,7 @@ int main(int argc, char *argv[])
 {
 	char cmd[size];//used for taking in commands from the user
 	char dir[size];
+	pid_t pid;
 	int childProcess;
 	for( ; ; )
 	{
@@ -108,7 +105,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		if((memcmp(cd, cmd, 2) ==0)) //if there is "cd" at teh beginning of the string
+		if((memcmp(cd, cmd, 2) ==0)) //if there is "cd" at the beginning of the string
 		{
 			directoryChange(cmd);
 		}    
@@ -133,7 +130,7 @@ int main(int argc, char *argv[])
 				if(pid == 0)//if this is a child process
 				{
 
-					childSignal(); //setting the child process to the foreground
+					childSignal(pid); //setting the child process to the foreground
 					if(pipeNum != 0)//if the pipeNum variable (a pipe was typed) is greater than zero, test the pipe method
 					{
 						pipeMethod(pipeNum, writeRedirect, readRedirect, cmd);
@@ -165,9 +162,8 @@ int main(int argc, char *argv[])
 		//resetting variables
 		readRedirect =0;
 		writeRedirect =0;
-		endIndex =0;
 		pipeNum =0;	
-		memset(cmd, 0, 512);    
+		memset(cmd, 0, size); //resetting the cmd buffer   
 
 	}
 } // end of main
@@ -509,18 +505,18 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 
 
 void directoryChange(char *cmd)
-{	
+{
+	uid_t uid;//users id
+	struct passwd *usrAccount; //struct passwd holds data about the user currently runnint the shell. The usrAccount struct holds information about the user from the operation system.
 	int numArgs =0;//used to determine if just "cd" was typed
-	char *home = getenv("HOME");
+	//char *home = getenv("HOME");use this to get the enviromental variable of the home dirrectory
 	char *command;
 	char *address;
-	//check for the first character after cd
-	//int c =x;
 	command = strtok(cmd, " \n");//tokenizing the cmd input for spaces and the next line(\n)
 
-	while(command != NULL)
+	while(command != NULL)//tokenizing the command char pointer 
 	{
-		if(numArgs ==1)
+		if(numArgs ==1)//if there is more than just "cd"
 		{
 			address = command;//have address equal the directory entered by the user
 		}	
@@ -529,18 +525,17 @@ void directoryChange(char *cmd)
 	}	
 
 	//if the input is just cd, then we get the user name and combine it with /home/
-	if(numArgs ==1)
+	if(numArgs == 1)
 	{
 
-
-		if((usrAccount= getpwuid(uid = getuid()))==NULL)
+		if((usrAccount = getpwuid(uid = getuid()))== NULL)//if there is a error in retrieving the user in the database
 		{
 			perror("getpwuid() error");
 			return;
 		}
 
-
-		if((chdir(usrAccount->pw_dir))!=0){
+		if((chdir(usrAccount->pw_dir))!=0)//if there is a error in going to the users login directory (usually the home directory)
+		{
 			perror("usrAccount->pw_dir error");
 			return;
 		}
@@ -619,7 +614,7 @@ void parentSignal()
 	//assert(sigaction(SIGUNUSED, &act, NULL) ==0);
 }
 
-void childSignal()
+void childSignal(pid_t pid)
 {
 	setpgrp(); //sets process group of own process to itself
 	tcsetpgrp(fileno(stdin), getpgid(pid));//having the child process in the foreground
