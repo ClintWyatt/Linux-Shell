@@ -1,8 +1,11 @@
 cc=gcc
 shell=Shell.c
-
+history=history.c
+signaling=signalHandler.c
+redirection=redirection.c
+simple=simpleCommand.c
 all:
-	$(cc) $(shell) -o subShell
+	$(cc) $(simple) $(history) $(signaling) $(redirection) $(shell) -o subShell
 
 clean:
 	rm subShell
