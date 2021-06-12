@@ -4,8 +4,10 @@ history=history.c
 signaling=signalHandler.c
 redirection=redirection.c
 simple=simpleCommand.c
+directory=directoryChange.c
+pipe=pipeLine.c
 all:
-	$(cc) $(simple) $(history) $(signaling) $(redirection) $(shell) -o subShell
+	$(cc) $(simple) $(directory) $(history) $(signaling) $(redirection) $(pipe) $(shell) -o subShell
 
 clean:
 	rm subShell

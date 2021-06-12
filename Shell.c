@@ -1,5 +1,5 @@
 /*
-Linux Bash Shell
+   Linux Bash Shell
 Author: Clint Wyatt
 Version: 0.7.4
 */
@@ -18,6 +18,8 @@ Version: 0.7.4
 #include "signalHandler.h"
 #include "redirection.h"
 #include "simpleCommand.h"
+#include "directoryChange.h"
+#include "pipeLine.h"
 
 #define SIZE 512
 #define recordLimit 40
@@ -41,7 +43,7 @@ int main(int argc, char *argv[])
 	int pos =0;
 	int pipeNum = 0, numRecords =0, readRedirect =0, writeRedirect =0;
 	struct commandHistory *head;
-        head = (struct commandHistory *)malloc(sizeof(struct commandHistory));
+	head = (struct commandHistory *)malloc(sizeof(struct commandHistory));
 	head->next = NULL;
 	head->previous = NULL;
 	struct commandHistory *last = NULL;
@@ -53,9 +55,9 @@ int main(int argc, char *argv[])
 		//getcwd copies the current directory to "directory"
 		printf("%s ", getcwd(dir, sizeof(dir)));
 		fgets(cmd, sizeof(cmd), stdin); //getting input from the user	
-		
-		addEntry(head, last, numRecords, recordLimit, cmd);
-		numRecords++;
+
+		addEntry(&head, last, numRecords, recordLimit, cmd);
+		numRecords++;//may need to change later is the user spams the shell with commands
 
 		//checking to see if the exit was typed by the user. If so, then the shell ends
 		if(memcmp(cmd, "exit", 4) ==0)
@@ -64,7 +66,6 @@ int main(int argc, char *argv[])
 			{
 				deleteHistory(head, last);
 			}
-			printf("here1\n");
 			exitShell();
 		} 
 
@@ -118,7 +119,8 @@ int main(int argc, char *argv[])
 					child(pid); //setting the child process to the foreground
 					if(pipeNum != 0)//if the pipeNum variable (a pipe was typed) is greater than zero, test the pipe method
 					{
-						pipeMethod(pipeNum, writeRedirect, readRedirect, cmd);
+						//parsePipeArgs(SIZE, pipeNum, cmd);
+						pipeMethod(pipeNum, 0, 0, cmd);
 					}
 					else if(writeRedirect !=0) //is > or >> was typed
 					{
@@ -357,9 +359,6 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 				perror("Fork");
 				exit(EXIT_FAILURE);
 			case 0:// in child /
-				//close all available pipes 
-				//if(t ==0)
-				//{
 
 				dup2(/*fd1[1]*/allPipes[0][1] , fileno(stdout)); //overide stdout
 
@@ -371,21 +370,6 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 
 				execvp(pipeCommands[pos][0], pipeCommands[pos]);//first command
 				exit(3);
-				/*	}
-					else
-					{
-					dup2(allPipes[t][0], fileno(stdin)); //overide stdout
-					k =0;
-					for(k; k < numPipes; k++)  //close all used pipes
-					{
-					close(allPipes[k][0]); //close read end
-					close(allPipes[k][1]); //close write end
-					}
-					execvp(pipeCommands[pos][0], pipeCommands[pos]);
-					exit(3);
-
-
-					}*/
 
 			default: // in parent //
 
@@ -399,15 +383,9 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 				if(pid2 ==0)
 				{
 
-					//printf("here \n");	 
-					
 					dup2(/*fd1[0]*/ allPipes[0][0], fileno(stdin));//overide stdin, second command, which is to the right of the pipe symbol
 
-					if(numPipes > 1) //if there is more than 1 pipe
-					{
-
 						dup2(/*fd2[1]*/ allPipes[1][1], fileno(stdout));//sending the output to the other side of the second pipe
-					}
 
 					for(k =0; k < numPipes; k++) //closing all pipes that are to be used 
 					{
@@ -423,29 +401,25 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 				}
 				else //parent process
 				{
-					if(numPipes > 1) //if there are more than 1 pipe, attempt to process 3rd command, which is right of the second pipe
+					k =0;
+					pos++;
+					if((pid3 = fork()) ==-1) //error in fork
 					{
-						k =0;
-
-						pos++;
-						if((pid3 = fork()) ==-1) //error in fork
-						{
-							perror("fork");
-							exit(EXIT_FAILURE);
-						}
-						else if(pid3 == 0) //child process
-						{
-							dup2(allPipes[1][0], fileno(stdin));
-							for(k = 0; k < numPipes; k++)
-							{
-								close(allPipes[k][0]);
-								close(allPipes[k][1]);
-							}
-
-							execvp(pipeCommands[pos][0], pipeCommands[pos]);
-						}
-
+						perror("fork");
+						exit(EXIT_FAILURE);
 					}
+					else if(pid3 == 0) //child process
+					{
+						dup2(allPipes[1][0], fileno(stdin));
+						for(k = 0; k < numPipes; k++)
+						{
+							close(allPipes[k][0]);
+							close(allPipes[k][1]);
+						}
+
+						execvp(pipeCommands[pos][0], pipeCommands[pos]);
+					}
+
 				}
 
 		}
@@ -462,57 +436,6 @@ void pipeMethod(int numPipes, int write, int read, char *cmd)
 		}
 		exit(0); //Ending the process. Without this exit, this process will not be terminated. 	
 	}		
-}
-
-
-void directoryChange(char *cmd)
-{
-	uid_t uid;//users id
-	struct passwd *usrAccount; //struct passwd holds data about the user currently runnint the shell. The usrAccount struct holds information about the user from the operation system.
-	int numArgs =0;//used to determine if just "cd" was typed
-	//char *home = getenv("HOME");use this to get the enviromental variable of the home dirrectory
-	char *command;
-	char *address;
-	command = strtok(cmd, " \n");//tokenizing the cmd input for spaces and the next line(\n)
-
-	while(command != NULL)//tokenizing the command char pointer 
-	{
-		if(numArgs ==1)//if there is more than just "cd"
-		{
-			address = command;//have address equal the directory entered by the user
-		}	
-		numArgs++;
-		command = strtok(NULL, " \n");//going to the next argument
-	}	
-
-	//if the input is just cd, then we get the user name and combine it with /home/
-	if(numArgs == 1)
-	{
-
-		if((usrAccount = getpwuid(uid = getuid()))== NULL)//if there is a error in retrieving the user in the database
-		{
-			perror("getpwuid() error");
-			return;
-		}
-
-		if((chdir(usrAccount->pw_dir))!=0)//if there is a error in going to the users login directory (usually the home directory)
-		{
-			perror("usrAccount->pw_dir error");
-			return;
-		}
-	}
-
-
-	//case that more than "cd" was typed 
-	else
-	{
-
-		if((chdir(address))!=0)//if the directory does not exist 
-		{
-			perror("cant change directory\n");		
-		}
-
-	}
 }
 
 // pathname

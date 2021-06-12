@@ -7,7 +7,7 @@ struct commandHistory
         struct commandHistory *previous;
 };
 
-void addEntry(struct commandHistory *head, struct commandHistory *last, int numRecords, int recordLimit, char *command);
+void addEntry(struct commandHistory **head, struct commandHistory *last, int numRecords, int recordLimit, char *command);
 
 void deleteHistory(struct commandHistory *head, struct commandHistory *last);
 

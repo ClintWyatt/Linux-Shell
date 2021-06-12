@@ -1,32 +1,33 @@
 #include "history.h"
 #include <stdio.h>
-void addEntry(struct commandHistory *head, struct commandHistory *last, int numRecords, int recordLimit, char *command)
+void addEntry(struct commandHistory **head, struct commandHistory *last, int numRecords, int recordLimit, char *command)
 {
 	if(numRecords == 0)
 	{
-		memset(head->command, '\0', sizeof(head->command));
-		memcpy(head->command, command, sizeof(command));
-		last = head;
-		head->next = NULL;
-		head->previous = NULL;
+		memset(((*head)->command), '\0', sizeof((*head)->command));
+		memcpy(((*head)->command), command, sizeof(command));
+		last =*head;
 	}
 	else if(numRecords < recordLimit)
 	{
 		struct commandHistory *node = (struct commandHistory *)malloc(sizeof(struct commandHistory));
 		memset(node->command, '\0', sizeof(node->command));
 		memcpy(node->command, command, sizeof(node->command));
-		node->next = head;
-		head = node;
-		head->next->previous = head;
+		node->next =*head;
+		(*head)->previous = node;
+		*head = node;
+		(*head)->previous = NULL;
+		//print(head);
 	}
 	else
 	{
+		printf("over limit for history \n");
 		struct commandHistory *node = (struct commandHistory *)malloc(sizeof(struct commandHistory));
 		memset(node->command, '\0', sizeof(node->command));
 		memcpy(node->command, command, sizeof(node->command));
-		node->next = head;
-		head = node;
-		head->next->previous = head;
+		node->next =*head;
+		*head = node;
+		(*head)->next->previous =*head;
 		struct commandHistory *lastTmp = last;
 		last = last->previous;
 		last->next = NULL;
@@ -39,8 +40,8 @@ void deleteHistory(struct commandHistory *head, struct commandHistory *last)
 	struct commandHistory *current;
 	while(head != NULL)
 	{
-		current = head;
-		head = head->next;
+		current =head;
+		head =head->next;
 		current->next = NULL;
 		current->previous = NULL;
 		free(current);
@@ -49,6 +50,12 @@ void deleteHistory(struct commandHistory *head, struct commandHistory *last)
 
 void print(struct commandHistory *head)
 {
-
+	struct commandHistory *current = NULL;
+	current =head;
+	while(current != NULL)
+	{
+		printf("%s", current->command);
+		current = current->next;
+	}
 }
 
