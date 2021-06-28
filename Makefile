@@ -1,5 +1,5 @@
 cc=gcc
-shell=Shell.c
+shell=shell.c
 history=history.c
 signaling=signalHandler.c
 redirection=redirection.c

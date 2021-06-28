@@ -7,5 +7,5 @@
 #include <sys/wait.h>
 
 void parsePipeArgs(const int size, int numPipes, char *cmd);
-void onePipe(const int size, char *commands[][size]);
-void manyPipes(const int size, char *commands[][size], int numPipes);
+void pipeMethod(const int size, char *pipeCommands[][size], int numPipes);
+

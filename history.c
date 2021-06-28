@@ -1,12 +1,13 @@
 #include "history.h"
 #include <stdio.h>
-void addEntry(struct commandHistory **head, struct commandHistory *last, int numRecords, int recordLimit, char *command)
+void addEntry(struct commandHistory **head, struct commandHistory **last, int numRecords, int recordLimit, char *command)
 {
 	if(numRecords == 0)
 	{
 		memset(((*head)->command), '\0', sizeof((*head)->command));
 		memcpy(((*head)->command), command, sizeof(command));
-		last =*head;
+		last =head;
+		(*last)->next = NULL;
 	}
 	else if(numRecords < recordLimit)
 	{
@@ -17,20 +18,24 @@ void addEntry(struct commandHistory **head, struct commandHistory *last, int num
 		(*head)->previous = node;
 		*head = node;
 		(*head)->previous = NULL;
-		//print(head);
+		if(numRecords == 1)
+		{
+			(*last)->previous = (*head);
+		}
 	}
 	else
 	{
-		printf("over limit for history \n");
 		struct commandHistory *node = (struct commandHistory *)malloc(sizeof(struct commandHistory));
 		memset(node->command, '\0', sizeof(node->command));
 		memcpy(node->command, command, sizeof(node->command));
 		node->next =*head;
+		(*head)->previous =node;
 		*head = node;
-		(*head)->next->previous =*head;
-		struct commandHistory *lastTmp = last;
-		last = last->previous;
-		last->next = NULL;
+		(*head)->previous = NULL;
+		struct commandHistory *lastTmp = (*last);
+		*last = (*last)->previous;
+		lastTmp->previous = NULL;
+		(*last)->next = NULL;
 		free(lastTmp);
 	}
 }
